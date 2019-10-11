@@ -378,8 +378,13 @@ static NSString *stripFragment(NSString* url)
                 // Fix AEMM-4138205: decrement _loadCount when a frame fails to load
                 _loadCount -= 1;
             } else {
-                fireCallback = YES;
-                _state = STATE_CANCELLED;
+                // Porting changes viewer-ios to aemm-ios repo
+                // Fix AEMM-4155816: don't enter STATE_CANCELLED if it is not the main document that fails to load
+                if([self isMainDocumentFail:error on:webView])
+                {
+                    fireCallback = YES;
+                    _state = STATE_CANCELLED;
+                }
                 _loadCount -= 1;
             }
             break;
@@ -396,6 +401,11 @@ static NSString *stripFragment(NSString* url)
     if (fireCallback && [_delegate respondsToSelector:@selector(webView:didFailLoadWithError:)]) {
         [_delegate webView:webView didFailLoadWithError:error];
     }
+}
+
+-(BOOL) isMainDocumentFail:(NSError*)error on:(UIWebView*)webView
+{
+    return [[error.userInfo valueForKey:@"NSErrorFailingURLKey"] isEqual:webView.request.mainDocumentURL];
 }
 
 @end

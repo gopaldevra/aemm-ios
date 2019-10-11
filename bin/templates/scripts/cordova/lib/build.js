@@ -33,7 +33,6 @@ var projectName = null;
 
 // These are regular expressions to detect if the user is changing any of the built-in xcodebuildArgs
 var buildFlagMatchers = {
-    'xcconfig' : /^\-xcconfig\s*(.*)$/,
     'project' : /^\-project\s*(.*)/,
     'archs' : /^(ARCHS=.*)/,
     'target' : /^\-target\s*(.*)/,
@@ -173,7 +172,6 @@ function getXcodeArgs(projectName, projectPath, configuration, isDevice, buildFl
 
     if (isDevice) {
         options = [
-            '-xcconfig', customArgs.xcconfig || path.join(__dirname, '..', 'build-' + configuration.toLowerCase() + '.xcconfig'),
             '-project',  customArgs.project || projectName + '.xcodeproj',
             customArgs.archs || 'ARCHS=armv7 arm64',
             '-target', customArgs.target || projectName,
@@ -187,7 +185,6 @@ function getXcodeArgs(projectName, projectPath, configuration, isDevice, buildFl
         ];
     } else { // emulator
         options = [
-            '-xcconfig', customArgs.xcconfig || path.join(__dirname, '..', 'build-' + configuration.toLowerCase() + '.xcconfig'),
             '-project', customArgs.project || projectName + '.xcodeproj',
             customArgs.archs || 'ARCHS=x86_64 i386',
             '-target', customArgs.target || projectName,
