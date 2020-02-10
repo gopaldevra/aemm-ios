@@ -107,26 +107,15 @@ var iOSExec = function () {
     if (successCallback || failCallback) {
         callbackId = service + cordova.callbackId++;
         cordova.callbacks[callbackId] =
-            {success:successCallback, fail:failCallback};
+            { success: successCallback, fail: failCallback };
     }
 
     actionArgs = massageArgsJsToNative(actionArgs);
 
-    var command = [callbackId, service, action, actionArgs];
-
-    // Stringify and queue the command. We stringify to command now to
-    // effectively clone the command arguments in case they are mutated before
-    // the command is executed.
-    commandQueue.push(JSON.stringify(command));
-
-    // If we're in the context of a stringByEvaluatingJavaScriptFromString call,
-    // then the queue will be flushed when it returns; no need for a poke.
-    // Also, if there is already a command in the queue, then we've already
-    // poked the native side, so there is no reason to do so again.
-    if (!isInContextOfEvalJs && commandQueue.length == 1) {
-        pokeNative();
-    }
-}
+    // CB-10133 DataClone DOM Exception 25 guard (fast function remover)
+    var command = [callbackId, service, action, JSON.parse(JSON.stringify(actionArgs))];
+    window.webkit.messageHandlers.cordova.postMessage(command);
+};
 
 // CB-10530
 function proxyChanged() {
@@ -224,6 +213,14 @@ iOSExec.nativeEvalAndFetch = function(func) {
     // CB-10133 DataClone DOM Exception 25 guard (fast function remover)
     var command = [callbackId, service, action, JSON.parse(JSON.stringify(actionArgs))];
     window.webkit.messageHandlers.cordova.postMessage(command);
+};
+
+iOSExec.nativeCallback = function (callbackId, status, message, keepCallback, debug) {
+    var success = status === 0 || status === 1;
+    var args = convertMessageToArgsNativeToJs(message);
+    Promise.resolve().then(function () {
+        cordova.callbackFromNative(callbackId, success, status, args, keepCallback); // eslint-disable-line
+    });
 };
 
 iOSExec.nativeCallback = function (callbackId, status, message, keepCallback, debug) {

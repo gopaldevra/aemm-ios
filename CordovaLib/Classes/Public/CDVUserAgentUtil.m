@@ -85,7 +85,6 @@ static NSMutableArray* gPendingSetUserAgentBlocks = nil;
         BOOL cachedValueIsOld = ![systemAndLocale isEqualToString:cordovaUserAgentVersion];
 
         if ((gOriginalUserAgent == nil) || cachedValueIsOld) {
-
             WKWebView* sampleWebView = [[WKWebView alloc] initWithFrame:CGRectZero];
             gOriginalUserAgent = [sampleWebView stringByEvaluatingJavaScriptFromString:@"navigator.userAgent"];
 
