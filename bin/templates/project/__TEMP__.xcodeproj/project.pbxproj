@@ -379,6 +379,8 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
+				SKIP_INSTALL = NO;
+				WK_WEB_VIEW_ONLY = 1;
 			};
 			name = Debug;
 		};
@@ -453,6 +455,8 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				PRODUCT_NAME = "__PROJECT_NAME__";
 				SKIP_INSTALL = YES;
+				SKIP_INSTALL = NO;
+				WK_WEB_VIEW_ONLY = 1;
 			};
 			name = Release;
 		};

@@ -17,41 +17,73 @@
     under the License.
 */
 
-var Q = require('q');
-var fs = require('fs');
-var path = require('path');
-var shell = require('shelljs');
-var xcode = require('xcode');
-var unorm = require('unorm');
-var plist = require('plist');
-var URL = require('url');
-var events = require('cordova-common').events;
-var xmlHelpers = require('cordova-common').xmlHelpers;
-var ConfigParser = require('cordova-common').ConfigParser;
-var CordovaError = require('cordova-common').CordovaError;
-var configMunger = require('./configMunger');
+'use strict';
+const Q = require('q');
+const fs = require('fs');
+const path = require('path');
+const shell = require('shelljs');
+const unorm = require('unorm');
+const plist = require('plist');
+const URL = require('url');
+const events = require('cordova-common').events;
+const xmlHelpers = require('cordova-common').xmlHelpers;
+const ConfigParser = require('cordova-common').ConfigParser;
+const CordovaError = require('cordova-common').CordovaError;
+const PlatformJson = require('cordova-common').PlatformJson;
+const PlatformMunger = require('cordova-common').ConfigChanges.PlatformMunger;
+const PluginInfoProvider = require('cordova-common').PluginInfoProvider;
+const FileUpdater = require('cordova-common').FileUpdater;
+const projectFile = require('./projectFile');
 
-/*jshint sub:true*/
+// launch storyboard and related constants
+const LAUNCHIMAGE_BUILD_SETTING = 'ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME';
+const LAUNCHIMAGE_BUILD_SETTING_VALUE = 'LaunchImage';
+const UI_LAUNCH_STORYBOARD_NAME = 'UILaunchStoryboardName';
+const CDV_LAUNCH_STORYBOARD_NAME = 'CDVLaunchScreen';
+const IMAGESET_COMPACT_SIZE_CLASS = 'compact';
+const CDV_ANY_SIZE_CLASS = 'any';
 
-module.exports.prepare = function (cordovaProject) {
+module.exports.prepare = function (cordovaProject, options) {
+    const platformJson = PlatformJson.load(this.locations.root, 'ios');
+    const munger = new PlatformMunger('ios', this.locations.root, platformJson, new PluginInfoProvider());
 
-    var self = this;
-
-    this._config = updateConfigFile(cordovaProject.projectConfig,
-        configMunger.get(this.locations.root), this.locations);
+    this._config = updateConfigFile(cordovaProject.projectConfig, munger, this.locations);
 
     // Update own www dir with project's www assets and plugins' assets and js-files
     return Q.when(updateWww(cordovaProject, this.locations))
-    .then(function () {
         // update project according to config.xml changes.
-        return updateProject(self._config, self.locations);
-    })
-    .then(function () {
-        handleIcons(cordovaProject.projectConfig, self.locations.xcodeCordovaProj);
-        handleSplashScreens(cordovaProject.projectConfig, self.locations.xcodeCordovaProj);
-    })
-    .then(function () {
-        self.events.emit('verbose', 'updated project successfully');
+        .then(() => updateProject(this._config, this.locations))
+        .then(() => {
+            updateIcons(cordovaProject, this.locations);
+            updateSplashScreens(cordovaProject, this.locations);
+            updateLaunchStoryboardImages(cordovaProject, this.locations);
+            updateFileResources(cordovaProject, this.locations);
+        })
+        .then(() => {
+            events.emit('verbose', 'Prepared iOS project successfully');
+        });
+};
+
+module.exports.clean = function (options) {
+    // A cordovaProject isn't passed into the clean() function, because it might have
+    // been called from the platform shell script rather than the CLI. Check for the
+    // noPrepare option passed in by the non-CLI clean script. If that's present, or if
+    // there's no config.xml found at the project root, then don't clean prepared files.
+    const projectRoot = path.resolve(this.root, '../..');
+    const projectConfigFile = path.join(projectRoot, 'config.xml');
+    if ((options && options.noPrepare) || !fs.existsSync(projectConfigFile) ||
+            !fs.existsSync(this.locations.configXml)) {
+        return Q();
+    }
+
+    const projectConfig = new ConfigParser(this.locations.configXml);
+
+    return Q().then(() => {
+        cleanWww(projectRoot, this.locations);
+        cleanIcons(projectRoot, projectConfig, this.locations);
+        cleanSplashScreens(projectRoot, projectConfig, this.locations);
+        cleanLaunchStoryboardImages(projectRoot, projectConfig, this.locations);
+        cleanFileResources(projectRoot, projectConfig, this.locations);
     });
 };
 
@@ -225,34 +257,52 @@ function handleOrientationSettings(platformConfig, infoPlist) {
     }
 }
 
-function handleBuildSettings(platformConfig, locations) {
-    var targetDevice = parseTargetDevicePreference(platformConfig.getPreference('target-device', 'ios'));
-    var deploymentTarget = platformConfig.getPreference('deployment-target', 'ios');
+function handleBuildSettings (platformConfig, locations, infoPlist) {
+    const pkg = platformConfig.getAttribute('ios-CFBundleIdentifier') || platformConfig.packageName();
+    const targetDevice = parseTargetDevicePreference(platformConfig.getPreference('target-device', 'ios'));
+    const deploymentTarget = platformConfig.getPreference('deployment-target', 'ios');
+    const needUpdatedBuildSettingsForLaunchStoryboard = checkIfBuildSettingsNeedUpdatedForLaunchStoryboard(platformConfig, infoPlist);
+    const swiftVersion = platformConfig.getPreference('SwiftVersion', 'ios');
 
-    // no build settings provided, we don't need to parse and update .pbxproj file
-    if (!targetDevice && !deploymentTarget) {
+    let project;
+
+    try {
+        project = projectFile.parse(locations);
+    } catch (err) {
+        return Q.reject(new CordovaError(`Could not parse ${locations.pbxproj}: ${err}`));
+    }
+
+    const origPkg = project.xcode.getBuildProperty('PRODUCT_BUNDLE_IDENTIFIER');
+
+    // no build settings provided and we don't need to update build settings for launch storyboards,
+    // then we don't need to parse and update .pbxproj file
+    if (origPkg === pkg && !targetDevice && !deploymentTarget && !needUpdatedBuildSettingsForLaunchStoryboard && !swiftVersion) {
         return Q();
     }
 
-    var proj = new xcode.project(locations.pbxproj);
-
-    try {
-        proj.parseSync();
-    } catch (err) {
-        return Q.reject(new CordovaError('An error occured during parsing of project.pbxproj. Start weeping. Output: ' + err));
+    if (origPkg !== pkg) {
+        events.emit('verbose', `Set PRODUCT_BUNDLE_IDENTIFIER to ${pkg}.`);
+        project.xcode.updateBuildProperty('PRODUCT_BUNDLE_IDENTIFIER', pkg);
     }
 
     if (targetDevice) {
-        events.emit('verbose', 'Set TARGETED_DEVICE_FAMILY to ' + targetDevice + '.');
-        proj.updateBuildProperty('TARGETED_DEVICE_FAMILY', targetDevice);
+        events.emit('verbose', `Set TARGETED_DEVICE_FAMILY to ${targetDevice}.`);
+        project.xcode.updateBuildProperty('TARGETED_DEVICE_FAMILY', targetDevice);
     }
 
     if (deploymentTarget) {
-        events.emit('verbose', 'Set IPHONEOS_DEPLOYMENT_TARGET to "' + deploymentTarget + '".');
-        proj.updateBuildProperty('IPHONEOS_DEPLOYMENT_TARGET', deploymentTarget);
+        events.emit('verbose', `Set IPHONEOS_DEPLOYMENT_TARGET to "${deploymentTarget}".`);
+        project.xcode.updateBuildProperty('IPHONEOS_DEPLOYMENT_TARGET', deploymentTarget);
     }
 
-    fs.writeFileSync(locations.pbxproj, proj.writeSync(), 'utf-8');
+    if (swiftVersion) {
+        events.emit('verbose', `Set SwiftVersion to "${swiftVersion}".`);
+        project.xcode.updateBuildProperty('SWIFT_VERSION', swiftVersion);
+    }
+
+    updateBuildSettingsForLaunchStoryboard(project.xcode, platformConfig, infoPlist);
+
+    project.write();
 
     return Q();
 }

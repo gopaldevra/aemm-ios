@@ -22,16 +22,12 @@
 /*global require, module, atob, document */
 
 /**
- * Creates a gap bridge iframe used to notify the native code about queued
+ * Creates the exec bridge used to notify the native code of
  * commands.
  */
-var cordova = require('cordova'),
-    utils = require('cordova/utils'),
-    base64 = require('cordova/base64'),
-    execIframe,
-    commandQueue = [], // Contains pending JS->Native messages.
-    isInContextOfEvalJs = 0,
-    failSafeTimerId = 0;
+var cordova = require('cordova');
+var utils = require('cordova/utils');
+var base64 = require('cordova/base64');
 
 function massageArgsJsToNative(args) {
     if (!args || utils.typeName(args) != 'Array') {
@@ -51,17 +47,17 @@ function massageArgsJsToNative(args) {
     return ret;
 }
 
-function massageMessageNativeToJs(message) {
-    if (message.CDVType == 'ArrayBuffer') {
-        var stringToArrayBuffer = function(str) {
+function massageMessageNativeToJs (message) {
+    if (message.CDVType === 'ArrayBuffer') {
+        var stringToArrayBuffer = function (str) {
             var ret = new Uint8Array(str.length);
             for (var i = 0; i < str.length; i++) {
                 ret[i] = str.charCodeAt(i);
             }
             return ret.buffer;
         };
-        var base64ToArrayBuffer = function(b64) {
-            return stringToArrayBuffer(atob(b64));
+        var base64ToArrayBuffer = function (b64) {
+            return stringToArrayBuffer(atob(b64)); // eslint-disable-line no-undef
         };
         message = base64ToArrayBuffer(message.data);
     }
@@ -82,8 +78,7 @@ function convertMessageToArgsNativeToJs(message) {
     return args;
 }
 
-function iOSExec() {
-
+var iOSExec = function () {
     var successCallback, failCallback, service, action, actionArgs;
     var callbackId = null;
     if (typeof arguments[0] !== 'string') {
@@ -100,9 +95,8 @@ function iOSExec() {
         // an invalid callbackId and passes it even if no callbacks were given.
         callbackId = 'INVALID';
     } else {
-        throw new Error('The old format of this exec call has been removed (deprecated since 2.1). Change to: ' +
-            'cordova.exec(null, null, \'Service\', \'action\', [ arg1, arg2 ]);'
-        );
+   	    throw new Error('The old format of this exec call has been removed (deprecated since 2.1). Change to: ' + // eslint-disable-line
+            'cordova.exec(null, null, \'Service\', \'action\', [ arg1, arg2 ]);');
     }
 
     // If actionArgs is not provided, default to an empty array
@@ -227,11 +221,25 @@ iOSExec.nativeCallback = function(callbackId, status, message, keepCallback, deb
 iOSExec.nativeEvalAndFetch = function(func) {
     // This shouldn't be nested, but better to be safe.
     isInContextOfEvalJs++;
+    // CB-10133 DataClone DOM Exception 25 guard (fast function remover)
+    var command = [callbackId, service, action, JSON.parse(JSON.stringify(actionArgs))];
+    window.webkit.messageHandlers.cordova.postMessage(command);
+};
+
+iOSExec.nativeCallback = function (callbackId, status, message, keepCallback, debug) {
+    var success = status === 0 || status === 1;
+    var args = convertMessageToArgsNativeToJs(message);
+    Promise.resolve().then(function () {
+        cordova.callbackFromNative(callbackId, success, status, args, keepCallback); // eslint-disable-line
+    });
+};
+
+// for backwards compatibility
+iOSExec.nativeEvalAndFetch = function (func) {
     try {
         func();
-        return iOSExec.nativeFetchMessages();
-    } finally {
-        isInContextOfEvalJs--;
+    } catch (e) {
+        console.log(e);
     }
 };
 

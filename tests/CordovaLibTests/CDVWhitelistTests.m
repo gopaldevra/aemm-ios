@@ -280,4 +280,26 @@
     XCTAssertTrue([whitelist URLIsAllowed:[NSURL URLWithString:@"http://user:pass@www.google.com"]]);
 }
 
+- (void)testAllowIntentsAndNavigations
+{
+    NSArray* allowIntents = @[ @"https://*" ];
+    NSArray* allowNavigations = @[ @"https://*.apache.org" ];
+    
+    CDVWhitelist* intentsWhitelist = [[CDVWhitelist alloc] initWithArray:allowIntents];
+    CDVWhitelist* navigationsWhitelist = [[CDVWhitelist alloc] initWithArray:allowNavigations];
+    
+    // Test allow-navigation superceding allow-intent
+    XCTAssertEqual([CDVIntentAndNavigationFilter filterUrl:[NSURL URLWithString:@"https://apache.org/foo.html"] intentsWhitelist:intentsWhitelist navigationsWhitelist:navigationsWhitelist], CDVIntentAndNavigationFilterValueNavigationAllowed);
+    // Test wildcard https as allow-intent
+    XCTAssertEqual([CDVIntentAndNavigationFilter filterUrl:[NSURL URLWithString:@"https://google.com"] intentsWhitelist:intentsWhitelist navigationsWhitelist:navigationsWhitelist], CDVIntentAndNavigationFilterValueIntentAllowed);
+    // Test http (not allowed in either)
+    XCTAssertEqual([CDVIntentAndNavigationFilter filterUrl:[NSURL URLWithString:@"http://google.com"] intentsWhitelist:intentsWhitelist navigationsWhitelist:navigationsWhitelist], CDVIntentAndNavigationFilterValueNoneAllowed);
+    
+    
+    NSURL* telUrl = [NSURL URLWithString:@"tel:5555555"];
+    NSMutableURLRequest* telRequest = [NSMutableURLRequest requestWithURL:telUrl];
+    telRequest.mainDocumentURL = telUrl;
+}
+
+
 @end

@@ -20,12 +20,11 @@
 #import <objc/message.h>
 #import "CDV.h"
 #import "CDVPlugin+Private.h"
-#import "CDVUIWebViewDelegate.h"
+#import "CDVWebViewUIDelegate.h"
 #import "CDVConfigParser.h"
 #import "CDVUserAgentUtil.h"
 #import <AVFoundation/AVFoundation.h>
 #import "NSDictionary+CordovaPreferences.h"
-#import "CDVLocalStorage.h"
 #import "CDVCommandDelegateImpl.h"
 
 @interface CDVViewController () {
@@ -280,8 +279,6 @@
         backupWebStorageType = backupWebStorage;
     }
     [self.settings setCordovaSetting:backupWebStorageType forKey:@"BackupWebStorage"];
-    
-    [CDVLocalStorage __fixupDatabaseLocationsWithBackupType:backupWebStorageType];
 
     // // Instantiate the WebView ///////////////
 
@@ -290,17 +287,6 @@
     }
 
     // /////////////////
-
-    /*
-     * Fire up CDVLocalStorage to work-around WebKit storage limitations: on all iOS 5.1+ versions for local-only backups, but only needed on iOS 5.1 for cloud backup.
-        With minimum iOS 7/8 supported, only first clause applies.
-     */
-    if ([backupWebStorageType isEqualToString:@"local"]) {
-        NSString* localStorageFeatureName = @"localstorage";
-        if ([self.pluginsMap objectForKey:localStorageFeatureName]) { // plugin specified in config
-            [self.startupPluginNames addObject:localStorageFeatureName];
-        }
-    }
 
     if ([self.startupPluginNames count] > 0) {
         [CDVTimer start:@"TotalPluginStartup"];
@@ -389,9 +375,12 @@
 
 - (UIView*)newCordovaViewWithFrame:(CGRect)bounds
 {
-    NSString* defaultWebViewEngineClass = @"CDVUIWebViewEngine";
+    NSString* defaultWebViewEngineClass = [self.settings cordovaSettingForKey:@"CordovaDefaultWebViewEngine"];
     NSString* webViewEngineClass = [self.settings cordovaSettingForKey:@"CordovaWebViewEngine"];
 
+    if (!defaultWebViewEngineClass) {
+        defaultWebViewEngineClass = @"CDVWebViewEngine";
+    }
     if (!webViewEngineClass) {
         webViewEngineClass = defaultWebViewEngineClass;
     }
@@ -399,7 +388,7 @@
     // Find webViewEngine
     if (NSClassFromString(webViewEngineClass)) {
         self.webViewEngine = [[NSClassFromString(webViewEngineClass) alloc] initWithFrame:bounds];
-        // if a webView engine returns nil (not supported by the current iOS version) or doesn't conform to the protocol, or can't load the request, we use UIWebView
+        // if a webView engine returns nil (not supported by the current iOS version) or doesn't conform to the protocol, or can't load the request, we use WKWebView
         if (!self.webViewEngine || ![self.webViewEngine conformsToProtocol:@protocol(CDVWebViewEngineProtocol)] || ![self.webViewEngine canLoadRequest:[NSURLRequest requestWithURL:self.appUrl]]) {
             self.webViewEngine = [[NSClassFromString(defaultWebViewEngineClass) alloc] initWithFrame:bounds];
         }

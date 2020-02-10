@@ -19,9 +19,9 @@
 
 #import <XCTest/XCTest.h>
 
-#import <Cordova/CDVUIWebViewDelegate.h>
+#import <Cordova/CDVWebViewDelegate.h>
 
-@interface CDVWebViewDelegate2 : CDVUIWebViewDelegate {}
+@interface CDVWebViewDelegate2 : CDVWebViewDelegate {}
 
 - (void)setState:(NSInteger)state;
 - (NSInteger)state;
@@ -42,7 +42,7 @@
 
 @end
 
-@interface CDVUIWebViewDelegate ()
+@interface CDVWebViewDelegate ()
 
 // expose private interface
 - (BOOL)shouldLoadRequest:(NSURLRequest*)request;
@@ -80,7 +80,7 @@
 
 - (void)testShouldLoadRequest
 {
-    CDVUIWebViewDelegate* wvd = [[CDVUIWebViewDelegate alloc] initWithDelegate:nil]; // not really testing delegate handling
+    CDVWebViewDelegate* wvd = [[CDVWebViewDelegate alloc] initWithDelegate:nil]; // not really testing delegate handling
 
     NSURLRequest* mailtoUrl = [NSURLRequest requestWithURL:[NSURL URLWithString:@"mailto:dev@cordova.apache.org"]];
     NSURLRequest* telUrl = [NSURLRequest requestWithURL:[NSURL URLWithString:@"tel:12345"]];
@@ -115,7 +115,7 @@
 
 - (void)doTestFragmentIdentifiersWithBaseUrl:(NSString*)baseUrl fragment:(NSString*)fragment
 {
-    CDVUIWebViewDelegate* wvd = [[CDVUIWebViewDelegate alloc] initWithDelegate:nil]; // not really testing delegate handling
+    CDVWebViewDelegate* wvd = [[CDVWebViewDelegate alloc] initWithDelegate:nil]; // not really testing delegate handling
 
     NSString* originalUrlString = baseUrl;
     NSURL* originalUrl = [NSURL URLWithString:originalUrlString];

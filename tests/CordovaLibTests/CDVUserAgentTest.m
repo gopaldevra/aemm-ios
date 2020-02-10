@@ -159,4 +159,21 @@
     XCTAssertTrue([cordovaUserAgent2 hasPrefix:rootVc.vc2.baseUserAgent], @"Cordova user agent should be based on base user agent.");
 }
 
+- (void)testUserAgentReleaseLock
+{
+    __block NSInteger myLockToken;
+
+    [CDVUserAgentUtil acquireLock:^(NSInteger lockToken) {
+        myLockToken = lockToken;
+        [CDVUserAgentUtil releaseLock:&myLockToken];
+
+        NSInteger nullInteger = 0;
+        // test releasing NULL token
+        [CDVUserAgentUtil releaseLock:&nullInteger];
+        NSInteger* ni = nil;
+        // test releasing nil object
+        [CDVUserAgentUtil releaseLock:ni];
+    }];
+}
+
 @end

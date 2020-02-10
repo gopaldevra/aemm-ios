@@ -19,14 +19,15 @@
     under the License.
 */
 
-var shell = require('shelljs'),
-    Q = require ('q'),
-    path = require('path'),
-    fs = require('fs'),
-    plist = require('plist'),
-    ROOT = path.join(__dirname, '..', '..');
+const shell = require('shelljs');
+const Q = require('q');
+const path = require('path');
+const fs = require('fs');
+const xmlescape = require('xml-escape');
+const ROOT = path.join(__dirname, '..', '..');
+const events = require('cordova-common').events;
 
-function updateSubprojectHelp() {
+function updateSubprojectHelp () {
     console.log('Updates the subproject path of the CordovaLib entry to point to this script\'s version of Cordova.');
     console.log('Usage: CordovaVersion/bin/update_cordova_project path/to/your/app.xcodeproj [path/to/CordovaLib.xcodeproj]');
 }
@@ -241,12 +242,11 @@ function update_cordova_subproject(argv) {
         throw new Error('Usage error for update_cordova_subproject');
     }
 
-    var projectPath = AbsProjectPath(argv[0]),
-        cordovaLibXcodePath;
-    if (argv.length < 2) {
+    const projectPath = AbsProjectPath(argv[0]);
+    let cordovaLibXcodePath;
+    if (argv.length < 3) {
         cordovaLibXcodePath = path.join(ROOT, 'CordovaLib', 'CordovaLib.xcodeproj');
-    }
-    else {
+    } else {
         cordovaLibXcodePath = AbsProjectPath(argv[1]);
     }
 
@@ -278,7 +278,7 @@ function update_cordova_subproject(argv) {
     shell.sed('-i', copyWwwSh, copyWwwJs, path.join(projectPath, 'project.pbxproj'));
 
     if (!found) {
-        throw new Error('Subproject: ' + subprojectPath + ' entry not found in project file');
+        throw new Error(`Entry not found in project file for sub-project: ${subprojectPath}`);
     }
 }
 

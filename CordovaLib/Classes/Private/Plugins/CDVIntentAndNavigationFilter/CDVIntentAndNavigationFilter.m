@@ -6,9 +6,7 @@
  to you under the Apache License, Version 2.0 (the
  "License"); you may not use this file except in compliance
  with the License.  You may obtain a copy of the License at
-
  http://www.apache.org/licenses/LICENSE-2.0
-
  Unless required by applicable law or agreed to in writing,
  software distributed under the License is distributed on an
  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -46,7 +44,9 @@
 - (void)parserDidStartDocument:(NSXMLParser*)parser
 {
     // file: url <allow-navigations> are added by default
-    self.allowNavigations = [[NSMutableArray alloc] initWithArray:@[ @"file://" ]];
+    // navigation to the scheme used by the app is also allowed
+    self.allowNavigations = [[NSMutableArray alloc] initWithArray:@[ @"file://"]];   
+
     // no intents are added by default
     self.allowIntents = [[NSMutableArray alloc] init];
 }
@@ -71,28 +71,73 @@
     }
 }
 
-- (BOOL)shouldOverrideLoadWithRequest:(NSURLRequest*)request navigationType:(UIWebViewNavigationType)navigationType
++ (CDVIntentAndNavigationFilterValue) filterUrl:(NSURL*)url intentsWhitelist:(CDVWhitelist*)intentsWhitelist navigationsWhitelist:(CDVWhitelist*)navigationsWhitelist
 {
-	/*
-	 The original implementation checked the allowed intents only for clicked links. However there is content out there that uses location.href = "<app_scheme>://"
-	 which would not be processed correctly if the scheme is not allowed for internal navigation at least for WKWebView.
-	 The code below allows opening external apps if and only if the scheme is not in the allowed navigation schemes and 
-	 the scheme exists in allowed intent schemes explicitly of by using "*" scheme.
-	 The allowed navigation schemes specified in config.xml indicates that the application is able to process them.
-	 */
-	NSURL* url = [request URL];
-	
-	BOOL anyIntentAllowed = [self.allowIntentsWhitelist schemeIsAllowed:@"*"];
-	BOOL intentAllowed = [self.allowIntentsWhitelist URLIsAllowed:url logFailure:NO];
-	BOOL navAllowed = [self.allowNavigationsWhitelist URLIsAllowed:url logFailure:NO];
-	
-	if (!navAllowed && (anyIntentAllowed || intentAllowed))
-	{
-		[[UIApplication sharedApplication] openURL:url];
-		return NO;
-	}
-	
-	return YES;
+    // a URL can only allow-intent OR allow-navigation, if both are specified,
+    // only allow-navigation is allowed
+
+    BOOL allowNavigationsPass = [navigationsWhitelist URLIsAllowed:url logFailure:NO];
+    BOOL allowIntentPass = [intentsWhitelist URLIsAllowed:url logFailure:NO];
+
+    if (allowNavigationsPass && allowIntentPass) {
+        return CDVIntentAndNavigationFilterValueNavigationAllowed;
+    } else if (allowNavigationsPass) {
+        return CDVIntentAndNavigationFilterValueNavigationAllowed;
+    } else if (allowIntentPass) {
+        return CDVIntentAndNavigationFilterValueIntentAllowed;
+    }
+
+    return CDVIntentAndNavigationFilterValueNoneAllowed;
+}
+
+- (CDVIntentAndNavigationFilterValue) filterUrl:(NSURL*)url
+{
+    return [[self class] filterUrl:url intentsWhitelist:self.allowIntentsWhitelist navigationsWhitelist:self.allowNavigationsWhitelist];
+}
+
+#define CDVWebViewNavigationTypeLinkClicked 0
+#define CDVWebViewNavigationTypeLinkOther -1
+
++ (BOOL)shouldOpenURLRequest:(NSURLRequest*)request navigationType:(CDVWebViewNavigationType)navigationType
+{
+    return (
+        navigationType == CDVWebViewNavigationTypeLinkClicked ||
+        navigationType == CDVWebViewNavigationTypeLinkOther
+    );
+}
+
++ (BOOL)shouldOverrideLoadWithRequest:(NSURLRequest*)request navigationType:(CDVWebViewNavigationType)navigationType filterValue:(CDVIntentAndNavigationFilterValue)filterValue
+{
+    NSString* allowIntents_whitelistRejectionFormatString = @"ERROR External navigation rejected - <allow-intent> not set for url='%@'";
+    NSString* allowNavigations_whitelistRejectionFormatString = @"ERROR Internal navigation rejected - <allow-navigation> not set for url='%@'";
+
+    NSURL* url = [request URL];
+
+    switch (filterValue) {
+        case CDVIntentAndNavigationFilterValueNavigationAllowed:
+            return YES;
+        case CDVIntentAndNavigationFilterValueIntentAllowed:
+            // only allow-intent if it's a CDVWebViewNavigationTypeLinkClicked (anchor tag) or CDVWebViewNavigationTypeOther and it's an internal link
+            if ([[self class] shouldOpenURLRequest:request navigationType:navigationType]){
+                [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+            }
+
+            // consume the request (i.e. no error) if it wasn't handled above
+            return NO;
+        case CDVIntentAndNavigationFilterValueNoneAllowed:
+            // allow-navigation attempt failed for sure
+            NSLog(@"%@", [NSString stringWithFormat:allowNavigations_whitelistRejectionFormatString, [url absoluteString]]);
+            // anchor tag link means it was an allow-intent attempt that failed as well
+            if (CDVWebViewNavigationTypeLinkClicked == navigationType) {
+                NSLog(@"%@", [NSString stringWithFormat:allowIntents_whitelistRejectionFormatString, [url absoluteString]]);
+            }
+            return NO;
+    }
+}
+
+- (BOOL)shouldOverrideLoadWithRequest:(NSURLRequest*)request navigationType:(CDVWebViewNavigationType)navigationType
+{
+    return [[self class] shouldOverrideLoadWithRequest:request navigationType:navigationType filterValue:[self filterUrl:request.URL]];
 }
 
 @end

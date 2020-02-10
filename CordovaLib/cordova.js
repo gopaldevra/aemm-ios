@@ -1,5 +1,8 @@
 // Platform: ios
+ 
 // c517ca811b4948b630e0b74dbae6c9637939da24
+
+// 17ed8ef404a1efc5cfc6c14e5df031f7d84e23f8
 /*
  Licensed to the Apache Software Foundation (ASF) under one
  or more contributor license agreements.  See the NOTICE file
@@ -59,7 +62,10 @@ var require,
             throw "module " + id + " not found";
         } else if (id in inProgressModules) {
             var cycle = requireStack.slice(inProgressModules[id]).join('->') + '->' + id;
-            throw "Cycle in require graph: " + cycle;
+            throw new Error('module ' + id + ' not found');
+        } else if (id in inProgressModules) {
+            var cycle = requireStack.slice(inProgressModules[id]).join('->') + '->' + id;
+            throw new Error('Cycle in require graph: ' + cycle);
         }
         if (modules[id].factory) {
             try {
@@ -75,8 +81,8 @@ var require,
     };
 
     define = function (id, factory) {
-        if (modules[id]) {
-            throw "module " + id + " already defined";
+        if (Object.prototype.hasOwnProperty.call(modules, id)) {
+            throw new Error('module ' + id + ' already defined');
         }
 
         modules[id] = {
@@ -170,7 +176,7 @@ function createEvent(type, data) {
     event.initEvent(type, false, false);
     if (data) {
         for (var i in data) {
-            if (data.hasOwnProperty(i)) {
+            if (Object.prototype.hasOwnProperty.call(data, i)) {
                 event[i] = data[i];
             }
         }
@@ -308,9 +314,8 @@ var cordova = {
             }
         }
         catch (err) {
-            var msg = "Error in " + (isSuccess ? "Success" : "Error") + " callbackId: " + callbackId + " : " + err;
-            console && console.log && console.log(msg);
-            cordova.fireWindowEvent("cordovacallbackerror", { 'message': msg });
+            var msg = 'Error in ' + (isSuccess ? 'Success' : 'Error') + ' callbackId: ' + callbackId + ' : ' + err;
+            cordova.fireWindowEvent('cordovacallbackerror', { message: msg, error: err });
             throw err;
         }
     },
@@ -338,12 +343,12 @@ var utils = require('cordova/utils');
 var moduleExports = module.exports;
 
 var typeMap = {
-    'A': 'Array',
-    'D': 'Date',
-    'N': 'Number',
-    'S': 'String',
-    'F': 'Function',
-    'O': 'Object'
+    A: 'Array',
+    D: 'Date',
+    N: 'Number',
+    S: 'String',
+    F: 'Function',
+    O: 'Object'
 };
 
 function extractParamName(callee, argIndex) {
@@ -468,7 +473,7 @@ var utils = require('cordova/utils');
 
 function each(objects, func, context) {
     for (var prop in objects) {
-        if (objects.hasOwnProperty(prop)) {
+        if (Object.prototype.hasOwnProperty.call(objects, prop)) {
             func.apply(context, [objects[prop], prop]);
         }
     }
@@ -549,7 +554,7 @@ function include(parent, objects, clobber, merge) {
  */
 function recursiveMerge(target, src) {
     for (var prop in src) {
-        if (src.hasOwnProperty(prop)) {
+        if (Object.prototype.hasOwnProperty.call(src, prop)) {
             if (target.prototype && target.prototype.constructor === target) {
                 // If the target object is a constructor override off prototype.
                 clobber(target.prototype, prop, src[prop]);
@@ -823,7 +828,7 @@ define("cordova/exec", function(require, exports, module) {
 /*global require, module, atob, document */
 
 /**
- * Creates a gap bridge iframe used to notify the native code about queued
+ * Creates the exec bridge used to notify the native code of
  * commands.
  */
 var cordova = require('cordova'),
@@ -836,14 +841,21 @@ var cordova = require('cordova'),
 
 function massageArgsJsToNative(args) {
     if (!args || utils.typeName(args) != 'Array') {
+
+var cordova = require('cordova');
+var utils = require('cordova/utils');
+var base64 = require('cordova/base64');
+
+function massageArgsJsToNative (args) {
+    if (!args || utils.typeName(args) !== 'Array') {
         return args;
     }
     var ret = [];
     args.forEach(function(arg, i) {
         if (utils.typeName(arg) == 'ArrayBuffer') {
             ret.push({
-                'CDVType': 'ArrayBuffer',
-                'data': base64.fromArrayBuffer(arg)
+                CDVType: 'ArrayBuffer',
+                data: base64.fromArrayBuffer(arg)
             });
         } else {
             ret.push(arg);
@@ -861,8 +873,9 @@ function massageMessageNativeToJs(message) {
             }
             return ret.buffer;
         };
-        var base64ToArrayBuffer = function(b64) {
-            return stringToArrayBuffer(atob(b64));
+
+        var base64ToArrayBuffer = function (b64) {
+            return stringToArrayBuffer(atob(b64)); // eslint-disable-line no-undef
         };
         message = base64ToArrayBuffer(message.data);
     }
@@ -871,7 +884,7 @@ function massageMessageNativeToJs(message) {
 
 function convertMessageToArgsNativeToJs(message) {
     var args = [];
-    if (!message || !message.hasOwnProperty('CDVType')) {
+    if (!message || !Object.prototype.hasOwnProperty.call(message, 'CDVType')) {
         args.push(message);
     } else if (message.CDVType == 'MultiPart') {
         message.messages.forEach(function(e) {
@@ -885,6 +898,8 @@ function convertMessageToArgsNativeToJs(message) {
 
 function iOSExec() {
 
+
+var iOSExec = function () {
     var successCallback, failCallback, service, action, actionArgs;
     var callbackId = null;
     if (typeof arguments[0] !== 'string') {
@@ -901,9 +916,8 @@ function iOSExec() {
         // an invalid callbackId and passes it even if no callbacks were given.
         callbackId = 'INVALID';
     } else {
-        throw new Error('The old format of this exec call has been removed (deprecated since 2.1). Change to: ' +
-            'cordova.exec(null, null, \'Service\', \'action\', [ arg1, arg2 ]);'
-        );
+   	    throw new Error('The old format of this exec call has been removed (deprecated since 2.1). Change to: ' + // eslint-disable-line
+            'cordova.exec(null, null, \'Service\', \'action\', [ arg1, arg2 ]);');
     }
 
     // If actionArgs is not provided, default to an empty array
@@ -1035,11 +1049,26 @@ iOSExec.nativeCallback = function(callbackId, status, message, keepCallback, deb
 iOSExec.nativeEvalAndFetch = function(func) {
     // This shouldn't be nested, but better to be safe.
     isInContextOfEvalJs++;
+
+    // CB-10133 DataClone DOM Exception 25 guard (fast function remover)
+    var command = [callbackId, service, action, JSON.parse(JSON.stringify(actionArgs))];
+    window.webkit.messageHandlers.cordova.postMessage(command);
+};
+
+iOSExec.nativeCallback = function (callbackId, status, message, keepCallback, debug) {
+    var success = status === 0 || status === 1;
+    var args = convertMessageToArgsNativeToJs(message);
+    Promise.resolve().then(function () {
+        cordova.callbackFromNative(callbackId, success, status, args, keepCallback); // eslint-disable-line
+    });
+};
+
+// for backwards compatibility
+iOSExec.nativeEvalAndFetch = function (func) {
     try {
         func();
-        return iOSExec.nativeFetchMessages();
-    } finally {
-        isInContextOfEvalJs--;
+    } catch (e) {
+        console.log(e);
     }
 };
 
@@ -1109,7 +1138,6 @@ var cordova = require('cordova');
 var modulemapper = require('cordova/modulemapper');
 var platform = require('cordova/platform');
 var pluginloader = require('cordova/pluginloader');
-var utils = require('cordova/utils');
 
 var platformInitChannelsArray = [channel.onNativeReady, channel.onPluginsReady];
 
@@ -1349,7 +1377,6 @@ channel.join(function() {
     channel.join(function() {
         require('cordova').fireDocumentEvent('deviceready');
     }, channel.deviceReadyChannelsArray);
-
 }, platformInitChannelsArray);
 
 });
@@ -1452,6 +1479,25 @@ exports.getOriginalSymbol = function(context, symbolPath) {
 
 exports.reset();
 
+});
+
+// file: ../cordova-ios/cordova-js-src/platform.js
+define("cordova/platform", function(require, exports, module) {
+
+module.exports = {
+    id: 'ios',
+    bootstrap: function () {
+        // Attach the console polyfill that is iOS-only to window.console
+        // see the file under plugin/ios/console.js
+        require('cordova/modulemapper').clobbers('cordova/plugin/ios/console', 'window.console');
+
+        // Attach the wkwebkit utility to window.WkWebView
+        // see the file under plugin/ios/wkwebkit.js
+        require('cordova/modulemapper').clobbers('cordova/plugin/ios/wkwebkit', 'window.WkWebView');
+
+        require('cordova/channel').onNativeReady.fire();
+    }
+};
 
 });
 
@@ -1549,6 +1595,82 @@ exports.getOriginalSymbol = function(context, symbolPath) {
 
 exports.reset();
 
+/**
+ * Formats a string and arguments following it ala console.log()
+ *
+ * Any remaining arguments will be appended to the formatted string.
+ *
+ * for rationale, see FireBug's Console API:
+ *    http://getfirebug.com/wiki/index.php/Console_API
+ */
+logger.format = function (formatString, args) {
+    return __format(arguments[0], [].slice.call(arguments, 1)).join(' ');
+};
+
+// ------------------------------------------------------------------------------
+/**
+ * Formats a string and arguments following it ala vsprintf()
+ *
+ * format chars:
+ *   %j - format arg as JSON
+ *   %o - format arg as JSON
+ *   %c - format arg as ''
+ *   %% - replace with '%'
+ * any other char following % will format it's
+ * arg via toString().
+ *
+ * Returns an array containing the formatted string and any remaining
+ * arguments.
+ */
+function __format (formatString, args) {
+    if (formatString === null || formatString === undefined) return [''];
+    if (arguments.length === 1) return [formatString.toString()];
+
+    if (typeof formatString !== 'string') { formatString = formatString.toString(); }
+
+    var pattern = /(.*?)%(.)(.*)/;
+    var rest = formatString;
+    var result = [];
+
+    while (args.length) {
+        var match = pattern.exec(rest);
+        if (!match) break;
+
+        var arg = args.shift();
+        rest = match[3];
+        result.push(match[1]);
+
+        if (match[2] === '%') {
+            result.push('%');
+            args.unshift(arg);
+            continue;
+        }
+
+        result.push(__formatted(arg, match[2]));
+    }
+
+    result.push(rest);
+
+    var remainingArgs = [].slice.call(args);
+    remainingArgs.unshift(result.join(''));
+    return remainingArgs;
+}
+
+function __formatted (object, formatChar) {
+    try {
+        switch (formatChar) {
+        case 'j':
+        case 'o': return JSON.stringify(object);
+        case 'c': return '';
+        }
+    } catch (e) {
+        return 'error JSON.stringify()ing argument: ' + e;
+    }
+
+    if ((object === null) || (object === undefined)) {
+        return Object.prototype.toString.call(object);
+    }
+
 
 });
 
@@ -1562,6 +1684,21 @@ module.exports = {
     }
 };
 
+
+});
+
+// file: ../cordova-ios/cordova-js-src/plugin/ios/wkwebkit.js
+define("cordova/plugin/ios/wkwebkit", function(require, exports, module) {
+
+var exec = require('cordova/exec');
+
+var WkWebKit = {
+    allowsBackForwardNavigationGestures: function (allow) {
+        exec(null, null, 'CDVWebViewEngine', 'allowsBackForwardNavigationGestures', [allow]);
+    }
+};
+
+module.exports = WkWebKit;
 
 });
 
@@ -1900,6 +2037,7 @@ utils.extend = (function() {
     // extend Child from Parent
     return function(Child, Parent) {
 
+    return function (Child, Parent) {
         F.prototype = Parent.prototype;
         Child.prototype = new F();
         Child.__super__ = Parent.prototype;

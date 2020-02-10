@@ -6,9 +6,9 @@
  to you under the Apache License, Version 2.0 (the
  "License"); you may not use this file except in compliance
  with the License.  You may obtain a copy of the License at
-
+ 
  http://www.apache.org/licenses/LICENSE-2.0
-
+ 
  Unless required by applicable law or agreed to in writing,
  software distributed under the License is distributed on an
  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,25 +17,34 @@
  under the License.
  */
 
-#import "CDVPlugin.h"
-#import "CDVWebViewEngineProtocol.h"
-#import <JavaScriptCore/JavaScriptCore.h>
 
+#import <Foundation/Foundation.h>
+#import <WebKit/WebKit.h>
+#import "CDVWebViewProcessPoolFactory.h"
 
-@protocol CordovaNativeBridgeProtocol <JSExport>
+static CDVWebViewProcessPoolFactory *factory = nil;
 
-/* handles gap://ready from cordova.js*/
-- (void) handleBridgeData:(NSString*) data;
+@implementation CDVWebViewProcessPoolFactory
 
-/* Log console information for UIWebview*/
-#ifdef DEBUG
--(void) consoleLog:(NSString*)log;
-#endif
-@end
++ (instancetype)sharedFactory
+{
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        factory = [[CDVWebViewProcessPoolFactory alloc] init];
+    });
+    
+    return factory;
+}
 
+- (instancetype)init
+{
+    if (self = [super init]) {
+        _sharedPool = [[WKProcessPool alloc] init];
+    }
+    return self;
+}
 
-@interface CDVUIWebViewEngine : CDVPlugin <CDVWebViewEngineProtocol, CordovaNativeBridgeProtocol>
-
-@property (nonatomic, strong, readonly) id <UIWebViewDelegate> uiWebViewDelegate;
-
+- (WKProcessPool*) sharedProcessPool {
+    return _sharedPool;
+}
 @end
