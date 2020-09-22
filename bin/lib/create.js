@@ -23,7 +23,6 @@ const shell = require('shelljs');
 const Q = require('q');
 const path = require('path');
 const fs = require('fs');
-const xmlescape = require('xml-escape');
 const ROOT = path.join(__dirname, '..', '..');
 const events = require('cordova-common').events;
 
