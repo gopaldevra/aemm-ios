@@ -192,7 +192,7 @@ function updateProject(platformConfig, locations) {
     events.emit('verbose', 'Wrote out iOS Bundle Identifier to "' + pkg + '"');
     events.emit('verbose', 'Wrote out iOS Bundle Version to "' + version + '"');
 
-    return handleBuildSettings(platformConfig, locations).then(function() {
+    return handleBuildSettings(platformConfig, locations, infoPlist).then(function() {
         if (name == originalName) {
             events.emit('verbose', 'iOS Product Name has not changed (still "' + originalName + '")');
             return Q();
