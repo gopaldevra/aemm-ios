@@ -10,7 +10,11 @@
     "cordova",
     "apache",
     "ecosystem:cordova",
-    "cordova:platform"
+    "cordova:platform",
+    "aem",
+    "aemm",
+    "aemmobile",
+    "aemm:platform"
   ],
   "scripts": {
     "pretest": "npm run lint",

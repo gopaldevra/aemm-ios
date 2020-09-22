@@ -7,7 +7,6 @@ tmp
 *.pbxuser
 xcuserdata
 console.log
-node_modules
 coverage/
 npm-debug.log
 .nyc_output/
