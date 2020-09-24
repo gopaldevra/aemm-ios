@@ -37,13 +37,13 @@
   },
   "dependencies": {
     "cordova-common": "^1.1.0",
+    "fs-extra": "^9.0.1",
     "ios-sim": "^5.0.6",
     "nopt": "^3.0.6",
     "plist": "^1.2.0",
     "q": "^1.4.1",
     "shelljs": "^0.5.3",
-    "xcode": "^0.8.3",
-    "fs-extra": "^9.0.0"
+    "xcode": "^0.8.3"
   },
   "bundledDependencies": [
     "cordova-common",
