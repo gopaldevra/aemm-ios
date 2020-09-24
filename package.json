@@ -36,7 +36,7 @@
     "nodeunit": "^0.8.7"
   },
   "dependencies": {
-    "cordova-common": "^1.1.0",
+    "cordova-common": "^4.0.2",
     "fs-extra": "^9.0.1",
     "ios-sim": "^5.0.6",
     "nopt": "^3.0.6",
