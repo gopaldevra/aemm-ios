@@ -150,11 +150,6 @@ function copyTemplateFiles (project_path, project_name, project_template_dir, pa
     const project_name_esc = project_name.replace(/&/g, '\\&');
     utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'project.pbxproj'), /__PROJECT_NAME__/g, project_name_esc);
     utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'project.pbxproj'), /__PROJECT_ID__/g, package_name);
-    utils.replaceFileContents(path.join(r, 'Classes', 'AppDelegate.h'), /__PROJECT_NAME__/g, project_name_esc);
-    utils.replaceFileContents(path.join(r, 'Classes', 'AppDelegate.m'), /__PROJECT_NAME__/g, project_name_esc);
-    utils.replaceFileContents(path.join(r, 'Classes', 'MainViewController.h'), /__PROJECT_NAME__/g, project_name_esc);
-    utils.replaceFileContents(path.join(r, 'Classes', 'MainViewController.m'), /__PROJECT_NAME__/g, project_name_esc);
-    utils.replaceFileContents(path.join(r, 'main.m'), /__PROJECT_NAME__/g, project_name_esc);
     utils.replaceFileContents(path.join(r, `${project_name}-Info.plist`), /__PROJECT_NAME__/g, project_name_esc);
 }
 
