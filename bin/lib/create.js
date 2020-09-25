@@ -146,7 +146,6 @@ function copyTemplateFiles (project_path, project_name, project_template_dir, pa
 
     // https://issues.apache.org/jira/browse/CB-12402 - Encode XML characters properly
     const project_name_xml_esc = xmlescape(project_name);
-    utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'contents.xcworkspacedata'), /__PROJECT_NAME__/g, project_name_xml_esc);
 
     const project_name_esc = project_name.replace(/&/g, '\\&');
     utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'project.pbxproj'), /__PROJECT_NAME__/g, project_name_esc);
