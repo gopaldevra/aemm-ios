@@ -121,10 +121,10 @@ function copyTemplateFiles (project_path, project_name, project_template_dir, pa
     fs.copySync(path.join(project_template_dir, '__TEMP__.xcodeproj'), path.join(`${project_path}/__TEMP__.xcodeproj`));
     fs.moveSync(path.join(project_path, '__TEMP__.xcodeproj'), path.join(`${r}.xcodeproj`));
 
-    fs.removeSync(path.join(project_path, `${project_name}.xcworkspace`));
-    fs.copySync(path.join(project_template_dir, '__TEMP__.xcworkspace'), path.join(`${project_path}/__TEMP__.xcworkspace`));
-    fs.moveSync(path.join(project_path, '__TEMP__.xcworkspace'), path.join(`${r}.xcworkspace`));
-    fs.moveSync(path.join(`${r}.xcworkspace`, 'xcshareddata', 'xcschemes', '__PROJECT_NAME__.xcscheme'), path.join(`${r}.xcworkspace`, 'xcshareddata', 'xcschemes', `${project_name}.xcscheme`));
+    fs.removeSync(path.join(project_path, `${project_name}.xcodeproj`));
+    fs.copySync(path.join(project_template_dir, '__TEMP__.xcodeproj'), path.join(`${project_path}/__TEMP__.xcodeproj`));
+    fs.moveSync(path.join(project_path, '__TEMP__.xcodeproj'), path.join(`${r}.xcodeproj`));
+    fs.moveSync(path.join(`${r}.xcodeproj`, 'xcshareddata', 'xcschemes', '__PROJECT_NAME__.xcscheme'), path.join(`${r}.xcodeproj`, 'xcshareddata', 'xcschemes', `${project_name}.xcscheme`));
 
     fs.removeSync(r);
     fs.copySync(path.join(project_template_dir, '__PROJECT_NAME__'), path.join(`${project_path}/__PROJECT_NAME__`));
@@ -148,8 +148,8 @@ function copyTemplateFiles (project_path, project_name, project_template_dir, pa
 
     // https://issues.apache.org/jira/browse/CB-12402 - Encode XML characters properly
     const project_name_xml_esc = xmlescape(project_name);
-    utils.replaceFileContents(path.join(`${r}.xcworkspace`, 'contents.xcworkspacedata'), /__PROJECT_NAME__/g, project_name_xml_esc);
-    utils.replaceFileContents(path.join(`${r}.xcworkspace`, 'xcshareddata', 'xcschemes', `${project_name}.xcscheme`), /__PROJECT_NAME__/g, project_name_xml_esc);
+    utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'contents.xcworkspacedata'), /__PROJECT_NAME__/g, project_name_xml_esc);
+    utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'xcshareddata', 'xcschemes', `${project_name}.xcscheme`), /__PROJECT_NAME__/g, project_name_xml_esc);
 
     const project_name_esc = project_name.replace(/&/g, '\\&');
     utils.replaceFileContents(path.join(`${r}.xcodeproj`, 'project.pbxproj'), /__PROJECT_NAME__/g, project_name_esc);
