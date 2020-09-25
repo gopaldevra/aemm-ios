@@ -215,10 +215,6 @@ exports.createProject = (project_path, package_name, project_name, opts, config)
     // Copy project template files
     copyTemplateFiles(project_path, project_name, project_template_dir, package_name);
 
-    // Copy xcconfig files
-    fs.copySync(path.join(project_template_dir, 'pods-debug.xcconfig'), path.join(project_path, 'pods-debug.xcconfig'));
-    fs.copySync(path.join(project_template_dir, 'pods-release.xcconfig'), path.join(project_path, 'pods-release.xcconfig'));
-
     // CordovaLib stuff
     copyJsAndCordovaLib(project_path, project_name, use_shared, config);
     copyScripts(project_path, project_name);
