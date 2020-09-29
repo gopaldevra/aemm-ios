@@ -131,7 +131,7 @@ function copyTemplateFiles (project_path, project_name, project_template_dir, pa
 
     fs.moveSync(path.join(r, '__PROJECT_NAME__-Info.plist'), path.join(r, `${project_name}-Info.plist`));
     fs.moveSync(path.join(r, 'gitignore'), path.join(r, '.gitignore'));
-    fs.moveSync(path.join(r, '__PROJECT_NAME__.h'), path.join(r, `${project_name}-.h`));
+    fs.moveSync(path.join(r, '__PROJECT_NAME__.h'), path.join(r, `${project_name}.h`));
 
     /* replace __PROJECT_NAME__ and __PROJECT_ID__ with ACTIVITY and ID strings, respectively, in:
      *
