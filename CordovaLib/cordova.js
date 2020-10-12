@@ -1558,12 +1558,36 @@ define("cordova/platform", function(require, exports, module) {
 module.exports = {
     id: 'ios',
     bootstrap: function() {
+
+        // Attach the console polyfill that is iOS-only to window.console
+        // see the file under plugin/ios/console.js
+        require('cordova/modulemapper').clobbers('cordova/plugin/ios/console', 'window.console');
+
+        // Attach the wkwebkit utility to window.WkWebView
+        // see the file under plugin/ios/wkwebkit.js
+        require('cordova/modulemapper').clobbers('cordova/plugin/ios/wkwebkit', 'window.WkWebView');
+
         require('cordova/channel').onNativeReady.fire();
     }
 };
 
 
 });
+
+// file: ../cordova-ios/cordova-js-src/plugin/ios/wkwebkit.js
+define("cordova/plugin/ios/wkwebkit", function(require, exports, module) {
+
+    var exec = require('cordova/exec');
+    
+    var WkWebKit = {
+        allowsBackForwardNavigationGestures: function (allow) {
+            exec(null, null, 'CDVWebViewEngine', 'allowsBackForwardNavigationGestures', [allow]);
+        }
+    };
+    
+    module.exports = WkWebKit;
+    
+    });
 
 // file: src/common/pluginloader.js
 define("cordova/pluginloader", function(require, exports, module) {
