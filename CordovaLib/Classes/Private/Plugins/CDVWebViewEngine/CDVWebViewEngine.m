@@ -48,6 +48,7 @@
 @implementation CDVWebViewEngine
 
 @synthesize engineWebView = _engineWebView;
+@synthesize pluginContext = _pluginContext;
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -184,6 +185,31 @@ static void * KVOContext = &KVOContext;
     return reload;
 }
 
+- (id)loadRequest:(NSURLRequest*)request allowingReadAccessToURL:(NSURL*)readAccessUrl
+{
+    if ([self canLoadRequest:request]) { // can load, differentiate between file urls and other schemes
+        if (request.URL.fileURL) {
+            SEL wk_sel = NSSelectorFromString(CDV_WKWEBVIEW_FILE_URL_LOAD_SELECTOR);
+            NSURL* readAccessUrl = [request.URL URLByDeletingLastPathComponent];
+            return ((id (*)(id, SEL, id, id))objc_msgSend)(_engineWebView, wk_sel, request.URL, readAccessUrl);
+        } else {
+            return [(WKWebView*)_engineWebView loadRequest:request];
+        }
+    } else { // can't load, print out error
+        NSString* errorHtml = [NSString stringWithFormat:
+                               @"<!doctype html>"
+                               @"<title>Error</title>"
+                               @"<div style='font-size:2em'>"
+                               @"   <p>The WebView engine '%@' is unable to load the request: %@</p>"
+                               @"   <p>Most likely the cause of the error is that the loading of file urls is not supported in iOS %@.</p>"
+                               @"</div>",
+                               NSStringFromClass([self class]),
+                               [request.URL description],
+                               [[UIDevice currentDevice] systemVersion]
+                               ];
+        return [self loadHTMLString:errorHtml baseURL:nil];
+    }
+}
 
 - (id)loadRequest:(NSURLRequest*)request
 {
